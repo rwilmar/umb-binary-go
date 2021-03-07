@@ -162,10 +162,11 @@ var umbStatusMap = map[byte]UmbStatusStruct{
 	84: {Code: 84, Name: "DATA_ERROR", Description: "Data error in measurement data or no valid data available"},
 	85: {Code: 85, Name: "MEAS_UNABLE", Description: "Device / sensor is unable to execute valid measurement due to ambient conditions"},
 
-	96: {Code: 96, Name: "FLASH_CRC_ERR", Description: "CRC-Fehler in den Flash-Daten"},
-	97: {Code: 97, Name: "FLASH_WRITE_ERR", Description: "Fehler beim Schreiben ins Flash"},
-	98: {Code: 98, Name: "FLASH_FLOAT_ERR", Description: "Flash enthält ungültige Float-Werte"},
-	99: {Code: 99, Name: "CONV_GO_ERR", Description: "Data type convert error while decoding"},
+	96:  {Code: 96, Name: "FLASH_CRC_ERR", Description: "CRC-Fehler in den Flash-Daten"},
+	97:  {Code: 97, Name: "FLASH_WRITE_ERR", Description: "Fehler beim Schreiben ins Flash"},
+	98:  {Code: 98, Name: "FLASH_FLOAT_ERR", Description: "Flash enthält ungültige Float-Werte"},
+	99:  {Code: 99, Name: "CONV_GO_ERR", Description: "Data type convert error while decoding"},
+	100: {Code: 99, Name: "COMM_GO_ERR", Description: "Communications error, device offline?"},
 
 	255: {Code: 255, Name: "UNBEK_ERR", Description: "Unknown error"},
 }
@@ -422,8 +423,11 @@ func BuildSetDateTelegram(deviceID uint16) UmbTelegram {
 }
 
 func decodeUmbReply(rawResponse []byte) UmbResponse {
-	if len(rawResponse) < 10 {
-		return UmbResponse{IsOk: false}
+	if len(rawResponse) < 10 { // no message available
+		return UmbResponse{
+			IsOk:      false,
+			ResStatus: umbStatusMap[100],
+		}
 	}
 	devFrom, addrFrom := decodeUmbAddr(rawResponse[4:6])
 	devTo, addrTo := decodeUmbAddr(rawResponse[2:4])
@@ -440,7 +444,8 @@ func decodeUmbReply(rawResponse []byte) UmbResponse {
 		RawResponse: rawResponse,
 		IsOk:        true,
 	}
-	if len(rawResponse) == 10 {
+	if len(rawResponse) == 10 { // status available, but message empty
+		res.ResStatus = umbStatusMap[rawResponse[10]]
 		return res
 	}
 

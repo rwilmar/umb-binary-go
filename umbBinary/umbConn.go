@@ -3,6 +3,7 @@ package umbBinary
 import (
 	"fmt"
 	"net"
+	"time"
 )
 
 /**
@@ -27,7 +28,7 @@ func calcCrc(crcBuff uint16, input byte) uint16 {
 
 func sendTCPTelegram(serverAddr string, telegram []byte) ([]byte, error) {
 	reply := make([]byte, 0, 1024) // reply buffer
-	conn, err := net.Dial("tcp", serverAddr)
+	conn, err := net.DialTimeout("tcp", serverAddr, 3*time.Second)
 	if err != nil {
 		fmt.Println(err)
 		return reply, err
