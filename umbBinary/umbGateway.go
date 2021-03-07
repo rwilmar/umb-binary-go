@@ -235,6 +235,7 @@ type UmbResponse struct {
 	ToAddr      uint16
 	ToDevType   UmbDeviceClassStruct
 	HwVersion   string
+	SwVersion   string
 	ResLen      int
 	CmdCode     UmbCmdEnum
 	CmdResponse UmbCmd
@@ -242,6 +243,7 @@ type UmbResponse struct {
 	ResStatus   UmbStatusStruct
 	IsOk        bool
 	Readings    []UmbReading
+	LastError   UmbStatusStruct
 }
 
 func (response UmbResponse) Describe() {
@@ -250,16 +252,25 @@ func (response UmbResponse) Describe() {
 	fmt.Printf(" From device:  [%d] %s - Address: %d \n", response.FromDevType.UmbCode, response.FromDevType.Name, response.FromAddr)
 	fmt.Printf(" To device:    [%d] %s - Address: %d \n", response.ToDevType.UmbCode, response.ToDevType.Name, response.ToAddr)
 	fmt.Printf(" H/W Version:%s \n", response.HwVersion)
+	fmt.Printf(" S/W Version:%s \n", response.SwVersion)
 	fmt.Printf(" Command (%x): %s \n", response.CmdResponse.Code, response.CmdResponse.Name)
 	fmt.Println(" Response length (bytes): ", response.ResLen)
 	fmt.Printf(" Response (raw): % x \n", response.RawResponse)
 	fmt.Printf(" Status (%d):   %s \n", response.ResStatus.Code, response.ResStatus.Description)
+	fmt.Printf(" Last Error (%d):   %s \n", response.LastError.Code, response.LastError.Description)
 	fmt.Printf(" Readings:     %d \n", len(response.Readings))
 	if len(response.Readings) > 0 {
 		fmt.Printf("  id Channel  Value \n")
 	}
 	for ix, el := range response.Readings {
 		fmt.Printf("   %d  %6d  %6.3f \n", ix+1, el.Channel, el.Value)
+	}
+}
+
+func (response *UmbResponse) decodeLastErrorResponse() {
+	response.ResStatus = umbStatusMap[response.RawResponse[10]]
+	if len(response.RawResponse) > 11 { // last error reported
+		response.LastError = umbStatusMap[response.RawResponse[12]]
 	}
 }
 
@@ -282,6 +293,32 @@ func (response *UmbResponse) decodeReadMchResponse() {
 		ix = ix + int(response.RawResponse[ix-1]) + 1 //next subTelegram index
 	}
 	response.Readings = readings
+}
+
+func (response *UmbResponse) decodeResetResponse() {
+	response.ResStatus = umbStatusMap[response.RawResponse[10]]
+	//no additional info
+}
+
+func (response *UmbResponse) decodeSetTimeResponse() {
+	response.ResStatus = umbStatusMap[response.RawResponse[10]]
+	//no additional info
+}
+
+func (response *UmbResponse) decodeStatusResponse() {
+	response.ResStatus = umbStatusMap[response.RawResponse[10]]
+	if len(response.RawResponse) >= 12 { // contains status info
+		response.ResStatus = umbStatusMap[response.RawResponse[12]]
+	}
+}
+
+func (response *UmbResponse) decodeVersionResponse() {
+	response.ResStatus = umbStatusMap[response.RawResponse[10]]
+	if len(response.RawResponse) >= 13 { // payload contains info
+		response.HwVersion = fmt.Sprintf("%6.2f", float32(response.RawResponse[12])/10)
+		response.SwVersion = fmt.Sprintf("%6.2f", float32(response.RawResponse[13])/10)
+	}
+	//no additional info
 }
 
 func decodeReadSubtelegram(subTelegram []byte) UmbReading {
@@ -450,14 +487,20 @@ func decodeUmbReply(rawResponse []byte) UmbResponse {
 	}
 
 	switch res.CmdCode {
-	case UmbCmdVersion:
-		fmt.Println("get version params")
+	case UmbCmdLastError:
+		res.decodeLastErrorResponse()
 	case UmbCmdRead:
 		res.decodeReadResponse()
-	case UmbCmdReset:
-		fmt.Println("reset device params")
 	case UmbCmdReadMulti:
 		res.decodeReadMchResponse()
+	case UmbCmdReset:
+		res.decodeResetResponse()
+	case UmbCmdSetDate:
+		res.decodeSetTimeResponse()
+	case UmbCmdStatus:
+		res.decodeStatusResponse()
+	case UmbCmdVersion:
+		res.decodeVersionResponse()
 	default:
 		fmt.Println("Error: can't complete response decoding command not found")
 	}
