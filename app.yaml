@@ -1,2 +1,2 @@
-application: umb_gateway
+application: umbGateway
 runtime: go114

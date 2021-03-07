@@ -1,4 +1,4 @@
-package main
+package umbBinary
 
 import (
 	"fmt"
@@ -60,35 +60,27 @@ func sendTCPTelegram(serverAddr string, telegram []byte) ([]byte, error) {
 	return reply, nil
 }
 
-func encodeUmbAddr(deviceType byte, deviceID uint16) []byte {
+func encodeUmbAddr(deviceType umbDeviceClassEnum, deviceID uint16) []byte {
 	var toAddr uint16 = uint16(deviceType)
 	toAddr = toAddr << 12
 	toAddr = toAddr + deviceID
 	return uint16ToLitteEndian(toAddr)
 }
 
-func decodeUmbAddr(addrLE []byte) (devType byte, devAddress uint16) {
+func decodeUmbAddr(addrLE []byte) (devType UmbDeviceClassStruct, devAddress uint16) {
 	addr := uint16FromLitteEndian(addrLE)
 	dev := (addr & 0xF000)
 	dev = dev >> 12
 	addr = (addr & 0x0FFF)
-	return uint8(dev), addr
+	return umbDeviceMap[byte(dev)], addr
 }
 
 /**
 Build/Encode generic telegram header for message
 **/
 func encodeHead(deviceID uint16) []byte {
-	toAddrLE := encodeUmbAddr(UMB_CLWS, deviceID)
-	// var toAddr uint16 = uint16(UMB_CLWS)
-	// toAddr = toAddr << 12
-	// toAddr = toAddr + deviceID
-	// toAddrLE := uint16ToLitteEndian(toAddr)
-
-	var fromAddr uint16 = uint16(UMB_CLPC)
-	fromAddr = fromAddr << 12
-	fromAddr = fromAddr + uint16(UMB_PCID)
-	fromAddrLE := uint16ToLitteEndian(fromAddr)
+	toAddrLE := encodeUmbAddr(umbCommDestinyDeviceClass, deviceID)
+	fromAddrLE := encodeUmbAddr(umbCommOriginDeviceClass, umbCommOriginDeviceID)
 
 	header := make([]byte, 0, 6)
 	header = append(header, UMB_SOH)
@@ -111,11 +103,11 @@ func encodeTail(telegram []byte) []byte {
 /***
 Build/Encode generic telegram body for message
 ***/
-func encodeFrameRequest(command umbCmd, payload ...byte) []byte {
+func encodeFrameRequest(command UmbCmd, payload ...byte) []byte {
 	frame := make([]byte, 0, 5)
 	frame = append(frame, 0)
 	frame = append(frame, UMB_STX)
-	frame = append(frame, byte(command.code))
+	frame = append(frame, byte(command.Code))
 	frame = append(frame, UMB_VERC)
 	if len(payload) > 0 && command.hasPayload {
 		frame = append(frame, payload...)
