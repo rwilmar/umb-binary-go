@@ -24,7 +24,7 @@ func main() {
 	ans.Describe()
 
 	fmt.Printf("\nSending Read Multihannel...\n")
-	telegram2 := umb.BuildReadMultichannelTelegram(1, 100, 4061, 10000)
+	telegram2 := umb.BuildReadMultichannelTelegram(1, 100, 200, 4061, 4705, 10000)
 	reply, _ := telegram2.Send(serverAddr)
 	reply.Describe()
 

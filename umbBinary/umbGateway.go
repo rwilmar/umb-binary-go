@@ -260,10 +260,10 @@ func (response UmbResponse) Describe() {
 	fmt.Printf(" Last Error (%d):   %s \n", response.LastError.Code, response.LastError.Description)
 	fmt.Printf(" Readings:     %d \n", len(response.Readings))
 	if len(response.Readings) > 0 {
-		fmt.Printf("  id Channel  Value \n")
+		fmt.Printf("  id Channel  Value    Unit     Description\n")
 	}
 	for ix, el := range response.Readings {
-		fmt.Printf("   %d  %6d  %6.3f \n", ix+1, el.Channel, el.Value)
+		fmt.Printf("   %d  %6d  %6.3f   %s  -  %s\n", ix+1, el.Channel, el.Value, umbChannelsMap[el.Channel].Unit, umbChannelsMap[el.Channel].Description)
 	}
 }
 
